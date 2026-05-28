@@ -47,6 +47,7 @@
 #include "sysfs.h"
 #include "optutils.h"
 #include "statfs_magic.h"
+#include "mountutils.h"
 
 #include <libmount.h>
 
@@ -367,6 +368,22 @@ static int fstrim_all_from_file(struct fstrim_control *ctl, const char *filename
 			mnt_table_remove_fs(tab, fs);
 			continue;	/* overlaying mount */
 		}
+
+		/* resolve non-device source (e.g. bind mount directory
+		 * path) to real block device via statmount() */
+#ifdef STATMOUNT_SB_SOURCE
+		if (is_directory(src, 1)) {
+			mnt_fs_set_source(fs, NULL);
+			src = NULL;
+			if (mnt_fs_fetch_statmount(fs,
+					STATMOUNT_SB_SOURCE) == 0)
+				src = mnt_fs_get_srcpath(fs);
+			if (!src || *src != '/') {
+				mnt_table_remove_fs(tab, fs);
+				continue;
+			}
+		}
+#endif
 
 		if (!is_directory(tgt, 1) ||
 		    !has_discard(src, &wholedisk)) {
