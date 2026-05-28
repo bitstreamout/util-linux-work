@@ -304,6 +304,7 @@ struct hw_impl {
    const int    id;
    const struct id_part     *parts;
    const char   *name;
+   const int    nooverwrite;	/* don't overwrite vendor and model from /proc/cpuinfo */
 };
 
 static const struct hw_impl hw_implementer[] = {
@@ -413,8 +414,10 @@ static int arm_ids_decode(struct lscpu_cputype *ct)
 		return 0;
 
 	/* decode vendor */
-	free(ct->vendor);
-	ct->vendor = xstrdup(hw->name);
+	if (!ct->vendor || !hw->nooverwrite) {
+		free(ct->vendor);
+		ct->vendor = xstrdup(hw->name);
+	}
 
 	/* decode model */
 	part = parse_model_id(ct);
@@ -423,8 +426,10 @@ static int arm_ids_decode(struct lscpu_cputype *ct)
 
 	for (j = 0; hw->parts[j].id != -1; j++) {
 		if (hw->parts[j].id == part) {
-			free(ct->modelname);
-			ct->modelname = xstrdup(hw->parts[j].name);
+			if (!ct->modelname || !hw->nooverwrite) {
+				free(ct->modelname);
+				ct->modelname = xstrdup(hw->parts[j].name);
+			}
 			break;
 		}
 	}
